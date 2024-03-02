@@ -1,3 +1,4 @@
+#TODO: Login, List, logout, who, Lookup, Deposit, Shutdown
 #This is file for all server operatons
 import socket
 #Use sqlite3 library to create simple db for stocks
