@@ -4,6 +4,12 @@ import socket
 #Use sqlite3 library to create simple db for stocks
 import sqlite3
 
+import select
+
+from concurrent.futures import ThreadPoolExecutor
+
+import threading
+
 
 
 # Connect to SQLite database
@@ -249,13 +255,6 @@ def quit_command(clientsocket):
 
 
 
-#creating socket object which is ipv4 & uses TCP
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-s.bind((socket.gethostname(), 2323))
-s.listen()
-
-
 #defining method to recieve data from client
 
 def recv_all(sock, delimiter = '\n'):
@@ -265,40 +264,44 @@ def recv_all(sock, delimiter = '\n'):
 
     #read data from socket
     while True:
-        #recieve data in chunks
-        chunk =sock.recv(4096).decode()
+        try:
+            #recieve data in chunks
+            chunk =sock.recv(4096).decode()
 
-        #check if delimiter is in the chunk
-        if delimiter in chunk:
-            data.append(chunk)
-            break #exit loop once delimiter is done
-        elif not chunk:
-            #if empty, then assume connection is closed
-            break
-        else:
-            #no delimiter encountered, keep gathering chunks
-            data.append(chunk)
+            #check if delimiter is in the chunk
+            if delimiter in chunk:
+                data.append(chunk)
+                break #exit loop once delimiter is done
+            elif not chunk:
+                #if empty, then assume connection is closed
+                break
+            else:
+                #no delimiter encountered, keep gathering chunks
+                data.append(chunk)
+        except BlockingIOError: #added exception
+            if not data:
+                continue
+            else:
+                break
         
         #Join all chunks into a string and remove delimiter
         return ''.join(data).rstrip(delimiter)
 
 
-#this loop runs until a connection is established
+#defining method to handle clients (need to handle multiple clients)
+def handle_clients(clientsocket, address):
+    print(f"Connection from {address} has been established")
+    conn = sqlite3.connect('stock_trading_system.db')
+    cursor = conn.cursor
+    #TODO: FIX WELCOME MESSAGE NOT SENDING
+    #message_welcome = "Welcome to this Stock Trading Program\n"
+    #clientsocket.send(message_welcome.encode()) #welcome message to client
 
-while True:
-    clientsocket, address = s.accept() 
-
-    
-    print(f"Connection from {address} Successfully Established")#message to check if connection worked
-    #sending string to client
-    
-    message_welcome = "Welcome to this Stock Trading Program\n"
-    clientsocket.send(message_welcome.encode())
-    
-    #Receive a command from the client
-     
     while True:
         client_message = recv_all(clientsocket)
+        if not client_message:
+            break #no message recieved, client is disconnected
+
         print(f"Received command from client: {client_message}")
    	 
         if client_message.startswith("BUY"):
@@ -310,18 +313,122 @@ while True:
         elif client_message.startswith("LIST"):
             response = list_command(conn, client_message)
         elif client_message.startswith("SHUTDOWN"):
-            shutdown_command(clientsocket, s, conn)
+            shutdown_command(clientsocket, server_socket, conn)
         elif client_message.startswith("QUIT"):
             quit_command(clientsocket)
+            sockets_list.remove(client_socket) #Added this to remove socket from list immediately to prevent ValueError
             break
         else:
          response = "Error 400: Invalid command.\n"
-         #print(f"Sending response to client: {response}")  # Debug print
-   	 
-
-        # Send the response to the client
+        
+        #send response to client
         clientsocket.sendall(response.encode())
-
+    
+    conn.close
     #close connection
     clientsocket.close()
+    print(f"Connection with {address} closed.")
+
+
+
+
+#creating socket object which is ipv4 & uses TCP
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+
+server_socket.bind(('0.0.0.0', 2323)) #changed from socket.gethostname() to '0.0.0.0'(allows clients from any machine)
+server_socket.listen()
+server_socket.setblocking(False)
+
+print("Server is listening on port 2323")
+
+sockets_list = [server_socket]
+try:
+    while True:
+        #Use select to wait for event on any of the sockets in our list to monitor
+        #includes sockets that we are reading/sending messages to as well as exceptions (which monitor for errors)
+        read_sockets, _, exception_sockets = select.select(sockets_list, [], sockets_list)
+
+        #Process sockets that are ready to be read (either new connections or incoming data on a client socket)
+        for notified_socket in read_sockets:
+
+            #check if new connection request
+            if notified_socket == server_socket:
+
+                #accecpt request
+                client_socket, client_address = server_socket.accept()
+
+                print(f"Accepted new connection from {client_address}")
+
+                #add new client socket to list of sockets
+                sockets_list.append(client_socket)
+
+                # Start a new thread to handle communication with this client.
+                # The client_socket and client_address are passed as arguments to the handle_client function.
+                threading.Thread(target=handle_clients, args=(client_socket, client_address)).start()
+
+        #if sockets have an error
+        for notified_socket in exception_sockets:
+            #remove socket from list
+            sockets_list.remove(notified_socket)
+
+            #close socket
+            notified_socket.close()
+finally:
+    #close server socket at the end
+    server_socket.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+# #this loop runs until a connection is established
+
+# while True:
+#     clientsocket, address = s.accept() 
+
+    
+#     print(f"Connection from {address} Successfully Established")#message to check if connection worked
+#     #sending string to client
+    
+#     message_welcome = "Welcome to this Stock Trading Program\n"
+#     clientsocket.send(message_welcome.encode())
+    
+#     #Receive a command from the client
+     
+#     while True:
+#         client_message = recv_all(clientsocket)
+#         print(f"Received command from client: {client_message}")
+   	 
+#         if client_message.startswith("BUY"):
+#             response = buy_command(conn, client_message)
+#         elif client_message.startswith("SELL"):
+#             response = sell_command(conn, client_message)
+#         elif client_message.startswith("BALANCE"):
+#             response = balance_command(conn, client_message)
+#         elif client_message.startswith("LIST"):
+#             response = list_command(conn, client_message)
+#         elif client_message.startswith("SHUTDOWN"):
+#             shutdown_command(clientsocket, s, conn)
+#         elif client_message.startswith("QUIT"):
+#             quit_command(clientsocket)
+#             break
+#         else:
+#          response = "Error 400: Invalid command.\n"
+#          #print(f"Sending response to client: {response}")  # Debug print
+   	 
+
+#         # Send the response to the client
+#         clientsocket.sendall(response.encode())
+
+#     #close connection
+#     clientsocket.close()
     
