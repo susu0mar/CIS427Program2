@@ -226,7 +226,6 @@ def balance_command(conn, command):
 
 #Souad
 def shutdown_command(clientsocket, serversocket, conn):
-
     #send confirmation msg to client
     response = "200 OK\nSERVER SHUTDOWN\n"
     clientsocket.sendall(response.encode())
@@ -252,8 +251,6 @@ def quit_command(clientsocket):
 
     #close client socket
     clientsocket.close()
-
-
 
 #defining method to recieve data from client
 
@@ -287,15 +284,21 @@ def recv_all(sock, delimiter = '\n'):
         #Join all chunks into a string and remove delimiter
         return ''.join(data).rstrip(delimiter)
 
-
+root_client = None #keeps track of root client
+ 
 #defining method to handle clients (need to handle multiple clients)
 def handle_clients(clientsocket, address):
+
+    global root_client  
+
     print(f"Connection from {address} has been established")
     conn = sqlite3.connect('stock_trading_system.db')
     cursor = conn.cursor
     #TODO: FIX WELCOME MESSAGE NOT SENDING
     #message_welcome = "Welcome to this Stock Trading Program\n"
     #clientsocket.send(message_welcome.encode()) #welcome message to client
+
+
 
     while True:
         client_message = recv_all(clientsocket)
@@ -313,7 +316,10 @@ def handle_clients(clientsocket, address):
         elif client_message.startswith("LIST"):
             response = list_command(conn, client_message)
         elif client_message.startswith("SHUTDOWN"):
-            shutdown_command(clientsocket, server_socket, conn)
+            if clientsocket == root_client: #checks if client is root
+                response = shutdown_command(clientsocket, server_socket, conn)
+            else: 
+                response = "Error, only root can execute shutdown"
         elif client_message.startswith("QUIT"):
             quit_command(clientsocket)
             if client_socket in sockets_list:
@@ -362,6 +368,9 @@ try:
 
                 #accecpt request
                 client_socket, client_address = server_socket.accept()
+
+                if root_client is None:
+                    root_client = client_socket #assigns first client connected as root
 
                 print(f"Accepted new connection from {client_address}")
 

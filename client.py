@@ -11,6 +11,7 @@ input_event = threading.Event()
 # Set the event for the first time to allow initial user input
 input_event.set()
 
+
 def input_handler(cmd_queue):
      while True:
           input_event.wait() #wait for the event to be set before asking for input 
