@@ -19,7 +19,7 @@ def input_handler(cmd_queue):
           cmd = input("Enter command (BUY, SELL, BALANCE, LIST, SHUTDOWN, QUIT): ").strip()
           cmd_queue.put(cmd)
           if cmd.upper() =="QUIT":
-               break
+                break
           input_event.clear() # Clear the event after getting user input, wait for server response
 
 #TODO: QUIT AND SHUTDOWN DON'T WORK, KEEP GETTING VALUE ERROR
@@ -97,6 +97,7 @@ try:
                  if "SERVER SHUTDOWN" in response:
                     print("Server shutting down. Exiting client.")
                     should_close = True
+                    continue
 
                     
                 # Set the event after the server response is processed 

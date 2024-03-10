@@ -316,7 +316,8 @@ def handle_clients(clientsocket, address):
             shutdown_command(clientsocket, server_socket, conn)
         elif client_message.startswith("QUIT"):
             quit_command(clientsocket)
-            sockets_list.remove(client_socket) #Added this to remove socket from list immediately to prevent ValueError
+            if client_socket in sockets_list:
+                sockets_list.remove(client_socket) #Added this to remove socket from list immediately to prevent ValueError
             break
         else:
          response = "Error 400: Invalid command.\n"
@@ -347,7 +348,11 @@ try:
     while True:
         #Use select to wait for event on any of the sockets in our list to monitor
         #includes sockets that we are reading/sending messages to as well as exceptions (which monitor for errors)
-        read_sockets, _, exception_sockets = select.select(sockets_list, [], sockets_list)
+        try:
+            read_sockets, _, exception_sockets = select.select(sockets_list, [], sockets_list)
+        except ValueError:
+            print("Debug msg: Client is closed.\n")
+            continue
 
         #Process sockets that are ready to be read (either new connections or incoming data on a client socket)
         for notified_socket in read_sockets:
