@@ -230,11 +230,15 @@ def shutdown_command(clientsocket, serversocket, conn):
     response = "200 OK\nSERVER SHUTDOWN\n"
     clientsocket.sendall(response.encode())
 
+    #added this code so we know to close all clients if flag is set
+    global shutdown_event
+    shutdown_event.set()
+
     #close client socket
-    clientsocket.close()
+    #clientsocket.close()
 
     #close server socket
-    serversocket.close()
+    #serversocket.close()
 
     #close db connection
     conn.close()
@@ -280,7 +284,10 @@ def recv_all(sock, delimiter = '\n'):
                 continue
             else:
                 break
-        
+        except OSError: #added another exception to prevent OSError when shutting everything down
+            if shutdown_event.is_set():
+                # Expected during shutdown, treat as normal
+                break
         #Join all chunks into a string and remove delimiter
         return ''.join(data).rstrip(delimiter)
 
@@ -300,7 +307,7 @@ def handle_clients(clientsocket, address):
 
 
 
-    while True:
+    while not shutdown_event.is_set():
         client_message = recv_all(clientsocket)
         if not client_message:
             break #no message recieved, client is disconnected
@@ -318,6 +325,9 @@ def handle_clients(clientsocket, address):
         elif client_message.startswith("SHUTDOWN"):
             if clientsocket == root_client: #checks if client is root
                 response = shutdown_command(clientsocket, server_socket, conn)
+                #if client_socket in sockets_list:
+                #    sockets_list.remove(client_socket) #Added this to remove socket from list immediately to prevent ValueError
+                #    break
             else: 
                 response = "Error, only root can execute shutdown"
         elif client_message.startswith("QUIT"):
@@ -349,9 +359,17 @@ server_socket.setblocking(False)
 
 print("Server is listening on port 2323")
 
+#create global event for shutdown!! to close all clients (cause it wasn't doing so before)
+shutdown_event = threading.Event() #global event flag for shutdown
+
 sockets_list = [server_socket]
 try:
     while True:
+
+        if shutdown_event.is_set():
+            #SHUTDOWN EVENT RECIEVED, START CLEANUP PROCESS
+            break
+
         #Use select to wait for event on any of the sockets in our list to monitor
         #includes sockets that we are reading/sending messages to as well as exceptions (which monitor for errors)
         try:
@@ -389,8 +407,16 @@ try:
             #close socket
             notified_socket.close()
 finally:
+    # Cleanup code before exiting
+    for socket in sockets_list[1:]:  # Skip the server socket
+        try:
+            socket.sendall("SERVER SHUTDOWN".encode())
+            socket.close()
+        except:
+            print(f"Error in closing socket.")
     #close server socket at the end
     server_socket.close()
+    print("Server Shutdown Cleanly!")
 
 
 
