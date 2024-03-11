@@ -256,6 +256,30 @@ def quit_command(clientsocket):
     #close client socket
     clientsocket.close()
 
+#method for login
+def login_command(clientsocket, address, command, conn):
+
+    global client_login_status
+
+    _, username, password = command.split() #split up command
+    cursor = conn.cursor()
+    #check to see if user exists in user database
+    cursor.execute("SELECT user_name, password FROM users WHERE user_name = ? AND password = ?", (username, password))
+    result = cursor.fetchone()
+
+    #maybe have lock for concurrency IDK**
+    if result:
+        client_login_status[address] = {'logged_in': True, 'user_id': username}
+        response = "200 Ok"
+    else:
+        response = "403 Wrong Username or Password"
+    
+    return response
+
+
+
+
+
 #defining method to recieve data from client
 
 def recv_all(sock, delimiter = '\n'):
@@ -291,19 +315,24 @@ def recv_all(sock, delimiter = '\n'):
         #Join all chunks into a string and remove delimiter
         return ''.join(data).rstrip(delimiter)
 
+
+#variables for login
+
 root_client = None #keeps track of root client
- 
+client_login_status = {} #use dictionary to keep track of logins
+
+
+
 #defining method to handle clients (need to handle multiple clients)
 def handle_clients(clientsocket, address):
 
     global root_client  
+    global client_login_status #use this to keep track if client is logged in or not 
 
     print(f"Connection from {address} has been established")
     conn = sqlite3.connect('stock_trading_system.db')
     cursor = conn.cursor
-    #TODO: FIX WELCOME MESSAGE NOT SENDING
-    #message_welcome = "Welcome to this Stock Trading Program\n"
-    #clientsocket.send(message_welcome.encode()) #welcome message to client
+    
 
 
 
@@ -314,7 +343,9 @@ def handle_clients(clientsocket, address):
 
         print(f"Received command from client: {client_message}")
    	 
-        if client_message.startswith("BUY"):
+        if client_message.startswith("LOGIN"):
+            response = login_command(clientsocket, address, client_message, conn)
+        elif client_message.startswith("BUY"):
             response = buy_command(conn, client_message)
         elif client_message.startswith("SELL"):
             response = sell_command(conn, client_message)
@@ -325,9 +356,6 @@ def handle_clients(clientsocket, address):
         elif client_message.startswith("SHUTDOWN"):
             if clientsocket == root_client: #checks if client is root
                 response = shutdown_command(clientsocket, server_socket, conn)
-                #if client_socket in sockets_list:
-                #    sockets_list.remove(client_socket) #Added this to remove socket from list immediately to prevent ValueError
-                #    break
             else: 
                 response = "Error, only root can execute shutdown"
         elif client_message.startswith("QUIT"):
