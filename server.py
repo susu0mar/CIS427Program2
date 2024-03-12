@@ -19,8 +19,8 @@ with sqlite3.connect('stock_trading_system.db') as conn:
     #RESET THE DATA OF DB (KEEP CODE COMMENTED UNLESS YOU WANT TO RESET DATA)
     #Drop existing tables
 
-   # cursor.execute('DROP TABLE IF EXISTS stocks;') 
-   # cursor.execute('DROP TABLE IF EXISTS users;')
+    #cursor.execute('DROP TABLE IF EXISTS stocks;') 
+    #cursor.execute('DROP TABLE IF EXISTS users;')
 
 
     # Create users table (from professors example)
@@ -58,25 +58,26 @@ with sqlite3.connect('stock_trading_system.db') as conn:
 
 # Insert initial data for users
     
-#cursor.executescript("""
-#INSERT INTO users (email, first_name, last_name, user_name, password, usd_balance) VALUES
-#('john.doe@example.com', 'John', 'Doe', 'johndoe', 'password123', 1000.00),
-#('jane.smith@example.com', 'Jane', 'Smith', 'janesmith', 'password123', 1500.00),
-#('alex.jones@example.com', 'Alex', 'Jones', 'alexjones', 'password123', 5.00);
-#""")
+# cursor.executescript("""
+# INSERT INTO users (email, first_name, last_name, user_name, password, usd_balance) VALUES
+# ('root@example.com', 'root', 'root', 'root', 'root123', 120.00),
+# ('john.doe@example.com', 'John', 'Doe', 'johndoe', 'password123', 1000.00),
+# ('jane.smith@example.com', 'Jane', 'Smith', 'janesmith', 'password123', 1500.00),
+# ('alex.jones@example.com', 'Alex', 'Jones', 'alexjones', 'password123', 5.00);
+# """)
 
 #insert initial data for stocks
     
-#cursor.executescript("""
-#INSERT INTO stocks (stock_symbol, stock_name, stock_balance, user_id) VALUES
-#('AAPL', 'Apple Inc.', 10, 1),
-#('GOOGL', 'Alphabet Inc.', 5, 2),
-#('MSFT', 'Microsoft Corp.', 8, 1),
-#('TSLA', 'Tesla Inc.', 3, 2);
-#""")
+# cursor.executescript("""
+# INSERT INTO stocks (stock_symbol, stock_name, stock_balance, user_id) VALUES
+# ('AAPL', 'Apple Inc.', 10, 1),
+# ('GOOGL', 'Alphabet Inc.', 5, 2),
+# ('MSFT', 'Microsoft Corp.', 8, 1),
+# ('TSLA', 'Tesla Inc.', 3, 2);
+# """)
 
-#conn.commit()
-#print("Initial data added successfully")
+# conn.commit()
+# print("Initial data added successfully")
 
     
 #Souad
@@ -372,14 +373,15 @@ def handle_clients(clientsocket, address):
         elif client_message.startswith("BALANCE"):
             response = balance_command(conn, client_message)
         elif client_message.startswith("LIST"):
+
             #make sure they're logged in before list
             if address in client_login_status and client_login_status[address]['logged_in']:
                 response = list_command(conn, address, client_login_status)
             else:
                 response = "403 Please login first \n"
-                
+
         elif client_message.startswith("SHUTDOWN"):
-            if clientsocket == root_client: #checks if client is root
+            if address in client_login_status and client_login_status[address]['user_name'] == 'root': #checks if client is root
                 response = shutdown_command(clientsocket, server_socket, conn)
             else: 
                 response = "Error, only root can execute shutdown"
@@ -440,8 +442,9 @@ try:
                 #accecpt request
                 client_socket, client_address = server_socket.accept()
 
-                if root_client is None:
-                    root_client = client_socket #assigns first client connected as root
+                #REMOVE THIS
+                #if root_client is None:
+               #     root_client = client_socket #assigns first client connected as root
 
                 print(f"Accepted new connection from {client_address}")
 
