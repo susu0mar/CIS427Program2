@@ -17,7 +17,7 @@ def input_handler(cmd_queue):
           input_event.wait() #wait for the event to be set before asking for input 
           
 
-          cmd = input("Enter command (LOGIN, BUY, SELL, BALANCE, LIST, WHO, SHUTDOWN, QUIT): ").strip()
+          cmd = input("Enter command (LOGIN, LOGOUT, BUY, SELL, BALANCE, LIST, WHO, SHUTDOWN, QUIT): ").strip()
           cmd_queue.put(cmd)
           if cmd.upper() =="QUIT":
                 break

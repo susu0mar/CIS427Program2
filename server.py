@@ -79,7 +79,7 @@ with sqlite3.connect('stock_trading_system.db') as conn:
 # conn.commit()
 # print("Initial data added successfully")
 
-    
+ #TODO: maybe not require user_id in buy command   
 #Souad
 def buy_command(conn, command):
     _, stock_symbol, stock_amount, price_per_stock, user_id= command.split()
@@ -134,6 +134,7 @@ def buy_command(conn, command):
     return f"200 OK\nBOUGHT: New balance: {new_stock_balance} {stock_symbol}. USD balance ${new_usd_balance}"
 
 
+#TODO: maybe not require user_id in sell command
 #Brooklyn
 def sell_command(conn, command):
     _, stock_symbol, stock_amount, price_per_stock, user_id = command.split()
@@ -298,6 +299,18 @@ def login_command(clientsocket, address, command, conn):
     return response
 
 
+#method for logout
+def logout_command(address, client_login_status):
+    if address in client_login_status:
+        #remove user login status
+        del client_login_status[address]
+        response = "200 OK"
+    else:
+        response = "403 Unable to logout"
+    
+    return response
+    
+
 #method for who
 def who_command(client_login_status):
     response = "200 OK\nThe list of active users:\n"
@@ -377,6 +390,8 @@ def handle_clients(clientsocket, address):
    	 
         if client_message.startswith("LOGIN"):
             response = login_command(clientsocket, address, client_message, conn)
+        elif client_message.startswith("LOGOUT"):
+            response = logout_command(address, client_login_status)
         elif client_message.startswith("BUY"):
             response = buy_command(conn, client_message)
         elif client_message.startswith("SELL"):
