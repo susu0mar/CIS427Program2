@@ -329,18 +329,22 @@ def lookup_command(clientsocket, address, command, conn, client_login_status):
     cursor = conn.cursor()
 
     #get all records from logged in user matching stock name
-    cursor.execute("SELECT * FROM stocks WHERE user_id = ? AND stock_name LIKE ?", client_login_status[address]['user_id'], f'%{stock_name}%')
+    cursor.execute("SELECT * FROM stocks WHERE user_id = ? AND stock_name LIKE ?", (client_login_status[address]['user_id'], f'%{stock_name}%'))
     results = cursor.fetchall()
 
     if results:
-        response = "200OK\n Found Match(es)"
+        response = "200OK\n Found {len(results)} Match(es)\n"
     for result in results:
         response += ' '.join(str(item) for item in result) + "\n"
     else: 
         response = "404 no records found"
     return response
     
+
 #deposit command
+
+
+
 
 
 #defining method to recieve data from client
@@ -418,7 +422,7 @@ def handle_clients(clientsocket, address):
 
         elif client_message.startswith("LOOKUP"):
             if address in client_login_status and client_login_status[address]['logged_in']:
-                response = list_command(conn, address, client_login_status)
+                response = lookup_command(clientsocket, address, client_message, conn, client_login_status)
             else:
                 response = "403 Please login first \n"
             
