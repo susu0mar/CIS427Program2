@@ -324,7 +324,7 @@ def who_command(client_login_status):
 #lookup method
 def lookup_command(clientsocket, address, command, conn, client_login_status):
     if address not in client_login_status or not client_login_status[address]['logged_in']:
-        return "401 Unauthorized"
+        return "403 Please login first"
     _, stock_name = command.split(maxsplit = 1)
     cursor = conn.cursor()
 
@@ -421,10 +421,7 @@ def handle_clients(clientsocket, address):
             response = balance_command(conn, client_message)
 
         elif client_message.startswith("LOOKUP"):
-            if address in client_login_status and client_login_status[address]['logged_in']:
-                response = lookup_command(clientsocket, address, client_message, conn, client_login_status)
-            else:
-                response = "403 Please login first \n"
+            response = lookup_command(clientsocket, address, client_message, conn, client_login_status)
             
         elif client_message.startswith("LIST"):
 
