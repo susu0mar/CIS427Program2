@@ -290,11 +290,22 @@ def login_command(clientsocket, address, command, conn):
     #maybe have lock for concurrency IDK**
     if result:
         username,_,user_id = result
-        client_login_status[address] = {'logged_in': True, 'user_name': username, "user_id": user_id}
+        client_login_status[address] = {'logged_in': True, 'user_name': username, 'user_id': user_id, 'IP': address[0]}
         response = "200 Ok"
     else:
         response = "403 Wrong Username or Password"
     
+    return response
+
+
+#method for who
+def who_command(client_login_status):
+    response = "200 OK\nThe list of active users:\n"
+
+    for addr, info in client_login_status.items():
+        if info.get('logged_in'):
+            response += f"{info.get('user_name')} {info.get('IP')}\n"
+
     return response
 
 
@@ -384,12 +395,17 @@ def handle_clients(clientsocket, address):
             if address in client_login_status and client_login_status[address]['user_name'] == 'root': #checks if client is root
                 response = shutdown_command(clientsocket, server_socket, conn)
             else: 
-                response = "Error, only root can execute shutdown"
+                response = "Error: only root can execute shutdown"
         elif client_message.startswith("QUIT"):
             quit_command(clientsocket, address)
             if clientsocket in sockets_list:
                 sockets_list.remove(clientsocket) #Added this to remove socket from list immediately to prevent ValueError
             break
+        elif client_message.startswith("WHO"):
+            if address in client_login_status and client_login_status[address]['user_name'] =='root': #check if client is root
+                response = who_command(client_login_status)
+            else:
+                response = "Error: only root can use WHO command"
         else:
          response = "Error 400: Invalid command.\n"
         
