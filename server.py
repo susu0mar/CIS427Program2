@@ -177,25 +177,38 @@ def sell_command(conn, command):
     return f"200 OK\nSOLD: New balance: {new_stock_balance} {stock_symbol}. USD balance ${new_usd_balance}"
 
 #Souad
-def list_command(conn, command):
-    parts = command.split() 
+def list_command(conn, address, client_login_status):
+
+    #parts = command.split() 
     #if user provided user id, use it, else defualt user id is 1
-    user_id = parts[1] if len(parts) > 1 else '1'
+   # user_id = parts[1] if len(parts) > 1 else '1'
 
     cursor = conn.cursor()
 
-    #execute query from DB to retrieve data
-    cursor.execute("SELECT ID, stock_symbol, stock_balance, user_id FROM stocks WHERE user_id = ?", (user_id,))
+    #determine if user is root
+    is_root = client_login_status[address]['user_name'] =='root'
+    user_id = client_login_status[address]['user_id']
+
+    #Fetch data based on user permissions
+    if is_root:
+        cursor.execute("SELECT ID, stock_symbol, stock_balance, user_id FROM stocks")
+        response_prefix ="The list of records in the Stock Database:\n"
+    else:
+        cursor.execute("SELECT ID, stock_symbol, stock_balance, user_id FROM stocks WHERE user_id = ?", (user_id,))
+        response_prefix = f"The list of records in the Stocks Database for user {user_id}:\n"
+    
     stocks = cursor.fetchall()
 
     if not stocks:
-        return f"200 OK\nNo stocks found for user {user_id}."
+        return f"200 OK\n" + ("No stocks found." if is_root else f"No stocks found for user {user_id}")
 
     #creating response string
-    response = f"200 OK\nThe list of records in the Stocks database for user {user_id}:\n"
+    response = f"200 OK\n" + response_prefix
     for stock in stocks:
         stock_id, symbol, balance, user_id = stock
-        response += f"{stock_id} {symbol} {balance} {user_id}\n"
+        #if is root, then include user id to the response, else don't need to
+        user_info = f" {user_id}" if is_root else ""
+        response += f"{stock_id} {symbol} {balance} {user_info}\n"
 
     return response
    
@@ -247,7 +260,13 @@ def shutdown_command(clientsocket, serversocket, conn):
     exit(0)
 
 #Brooklyn
-def quit_command(clientsocket):
+def quit_command(clientsocket, address):
+
+    global client_login_status
+
+    #remove login status
+    if address in client_login_status:
+        del client_login_status[address]
 
     #send confirmation msg to client
     response = "200 OK\n"
@@ -264,12 +283,13 @@ def login_command(clientsocket, address, command, conn):
     _, username, password = command.split() #split up command
     cursor = conn.cursor()
     #check to see if user exists in user database
-    cursor.execute("SELECT user_name, password FROM users WHERE user_name = ? AND password = ?", (username, password))
+    cursor.execute("SELECT user_name, password, ID FROM users WHERE user_name = ? AND password = ?", (username, password))
     result = cursor.fetchone()
 
     #maybe have lock for concurrency IDK**
     if result:
-        client_login_status[address] = {'logged_in': True, 'user_id': username}
+        username,_,user_id = result
+        client_login_status[address] = {'logged_in': True, 'user_name': username, "user_id": user_id}
         response = "200 Ok"
     else:
         response = "403 Wrong Username or Password"
@@ -352,16 +372,21 @@ def handle_clients(clientsocket, address):
         elif client_message.startswith("BALANCE"):
             response = balance_command(conn, client_message)
         elif client_message.startswith("LIST"):
-            response = list_command(conn, client_message)
+            #make sure they're logged in before list
+            if address in client_login_status and client_login_status[address]['logged_in']:
+                response = list_command(conn, address, client_login_status)
+            else:
+                response = "403 Please login first \n"
+                
         elif client_message.startswith("SHUTDOWN"):
             if clientsocket == root_client: #checks if client is root
                 response = shutdown_command(clientsocket, server_socket, conn)
             else: 
                 response = "Error, only root can execute shutdown"
         elif client_message.startswith("QUIT"):
-            quit_command(clientsocket)
-            if client_socket in sockets_list:
-                sockets_list.remove(client_socket) #Added this to remove socket from list immediately to prevent ValueError
+            quit_command(clientsocket, address)
+            if clientsocket in sockets_list:
+                sockets_list.remove(clientsocket) #Added this to remove socket from list immediately to prevent ValueError
             break
         else:
          response = "Error 400: Invalid command.\n"
