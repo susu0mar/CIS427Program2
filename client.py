@@ -23,7 +23,7 @@ def input_handler(cmd_queue):
                 break
           input_event.clear() # Clear the event after getting user input, wait for server response
 
-#TODO: QUIT AND SHUTDOWN DON'T WORK, KEEP GETTING VALUE ERROR
+
 def recv_all(sock, delimiter = '\n'):
     #have empty list to hold all chunks of data
     data = []
@@ -88,7 +88,7 @@ try:
                          print ("Exiting client :)") 
                          should_close = True #to exit the loop and end the client
 
-            #check for server messages
+            #check for server messages using SELECT()!!!!
             readable, _, _ = select.select([cs], [], [], 0.1)
 
             if cs in readable:

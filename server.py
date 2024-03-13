@@ -456,7 +456,7 @@ try:
             #SHUTDOWN EVENT RECIEVED, START CLEANUP PROCESS
             break
 
-        #Use select to wait for event on any of the sockets in our list to monitor
+        #Use SELECT() to wait for event on any of the sockets in our list to monitor
         #includes sockets that we are reading/sending messages to as well as exceptions (which monitor for errors)
         try:
             read_sockets, _, exception_sockets = select.select(sockets_list, [], sockets_list)
@@ -513,49 +513,4 @@ finally:
 
 
 
-
-
-
-
-# #this loop runs until a connection is established
-
-# while True:
-#     clientsocket, address = s.accept() 
-
-    
-#     print(f"Connection from {address} Successfully Established")#message to check if connection worked
-#     #sending string to client
-    
-#     message_welcome = "Welcome to this Stock Trading Program\n"
-#     clientsocket.send(message_welcome.encode())
-    
-#     #Receive a command from the client
-     
-#     while True:
-#         client_message = recv_all(clientsocket)
-#         print(f"Received command from client: {client_message}")
-   	 
-#         if client_message.startswith("BUY"):
-#             response = buy_command(conn, client_message)
-#         elif client_message.startswith("SELL"):
-#             response = sell_command(conn, client_message)
-#         elif client_message.startswith("BALANCE"):
-#             response = balance_command(conn, client_message)
-#         elif client_message.startswith("LIST"):
-#             response = list_command(conn, client_message)
-#         elif client_message.startswith("SHUTDOWN"):
-#             shutdown_command(clientsocket, s, conn)
-#         elif client_message.startswith("QUIT"):
-#             quit_command(clientsocket)
-#             break
-#         else:
-#          response = "Error 400: Invalid command.\n"
-#          #print(f"Sending response to client: {response}")  # Debug print
-   	 
-
-#         # Send the response to the client
-#         clientsocket.sendall(response.encode())
-
-#     #close connection
-#     clientsocket.close()
     
