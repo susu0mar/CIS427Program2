@@ -342,7 +342,28 @@ def lookup_command(clientsocket, address, command, conn, client_login_status):
     
 
 #deposit command
+def deposit_command(clientsocket, address, command, conn, client_login_status):
+    if address not in client_login_status or not client_login_status[address]['logged_in']:
+        return "403 Please login first"
 
+    _, amount = command.split(maxsplit=1)
+    try:
+        deposit_amount = float(amount)
+    except ValueError:
+        return "400 Bad Request: Invalid amount"
+
+    # update balance in database
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET usd_balance = usd_balance + ? WHERE ID = ?", (deposit_amount, client_login_status[address]['user_id']))
+    conn.commit()
+
+    # get updated balance
+    cursor.execute("SELECT usd_balance FROM users WHERE ID = ?", (client_login_status[address]['user_id'],))
+    new_balance = cursor.fetchone()[0]
+
+    response = f"Deposit successful. New balance ${new_balance:.2f}"
+
+    return response
 
 
 
@@ -419,10 +440,10 @@ def handle_clients(clientsocket, address):
             response = sell_command(conn, client_message)
         elif client_message.startswith("BALANCE"):
             response = balance_command(conn, client_message)
-
         elif client_message.startswith("LOOKUP"):
             response = lookup_command(clientsocket, address, client_message, conn, client_login_status)
-            
+        elif client_message.startswith("DEPOSIT"):
+            response = deposit_command(clientsocket, address, client_message, conn, client_login_status)
         elif client_message.startswith("LIST"):
 
             #make sure they're logged in before list
