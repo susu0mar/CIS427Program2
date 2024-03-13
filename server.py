@@ -321,6 +321,28 @@ def who_command(client_login_status):
 
     return response
 
+#lookup method
+def lookup_command(clientsocket, address, command, conn, client_login_status):
+    if address not in client_login_status or not client_login_status[address]['logged_in']:
+        return "403 Please login first"
+    _, stock_name = command.split(maxsplit = 1)
+    cursor = conn.cursor()
+
+    #get all records from logged in user matching stock name
+    cursor.execute("SELECT * FROM stocks WHERE user_id = ? AND stock_name LIKE ?", (client_login_status[address]['user_id'], f'%{stock_name}%'))
+    results = cursor.fetchall()
+
+    if results:
+        response = "200OK\n Found {len(results)} Match(es)\n"
+    for result in results:
+        response += ' '.join(str(item) for item in result) + "\n"
+    else: 
+        response = "404 no records found"
+    return response
+    
+
+#deposit command
+
 
 
 
@@ -380,7 +402,6 @@ def handle_clients(clientsocket, address):
     
 
 
-
     while not shutdown_event.is_set():
         client_message = recv_all(clientsocket)
         if not client_message:
@@ -398,6 +419,10 @@ def handle_clients(clientsocket, address):
             response = sell_command(conn, client_message)
         elif client_message.startswith("BALANCE"):
             response = balance_command(conn, client_message)
+
+        elif client_message.startswith("LOOKUP"):
+            response = lookup_command(clientsocket, address, client_message, conn, client_login_status)
+            
         elif client_message.startswith("LIST"):
 
             #make sure they're logged in before list
@@ -421,8 +446,12 @@ def handle_clients(clientsocket, address):
                 response = who_command(client_login_status)
             else:
                 response = "Error: only root can use WHO command"
+
         else:
          response = "Error 400: Invalid command.\n"
+
+    
+    
         
         #send response to client
         clientsocket.sendall(response.encode())
