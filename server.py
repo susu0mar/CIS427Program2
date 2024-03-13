@@ -216,11 +216,11 @@ def list_command(conn, address, client_login_status):
    
 
 #Brooklyn
-def balance_command(conn, command):
-    _, user_id = command.split()
+def balance_command(conn, address, client_login_status):
+   # _, user_id = command.split() #DONT NEED TO HAVE CLIENT GIVE UDER_ID
 
     #should user number be read in or set? right now its read in
-    user_id = int(user_id)
+    user_id = client_login_status[address]['user_id']
 
     cursor = conn.cursor()
 
@@ -329,13 +329,13 @@ def lookup_command(clientsocket, address, command, conn, client_login_status):
     cursor = conn.cursor()
 
     #get all records from logged in user matching stock name
-    cursor.execute("SELECT * FROM stocks WHERE user_id = ? AND stock_name LIKE ?", (client_login_status[address]['user_id'], f'%{stock_name}%'))
+    cursor.execute("SELECT * FROM stocks WHERE user_id = ? AND stock_symbol LIKE ?", (client_login_status[address]['user_id'], f'%{stock_name}%'))
     results = cursor.fetchall()
 
     if results:
-        response = "200OK\n Found {len(results)} Match(es)\n"
-    for result in results:
-        response += ' '.join(str(item) for item in result) + "\n"
+        response = f"200 OK\n Found {len(results)} Match(es)\n"
+        for result in results:
+            response += ' '.join(str(item) for item in result) + "\n"
     else: 
         response = "404 no records found"
     return response
@@ -414,11 +414,21 @@ def handle_clients(clientsocket, address):
         elif client_message.startswith("LOGOUT"):
             response = logout_command(address, client_login_status)
         elif client_message.startswith("BUY"):
-            response = buy_command(conn, client_message)
+            if address in client_login_status and client_login_status[address]['logged_in']:
+                response = buy_command(conn, client_message)
+            else:
+                response = "403 Please login first\n"
         elif client_message.startswith("SELL"):
-            response = sell_command(conn, client_message)
-        elif client_message.startswith("BALANCE"):
-            response = balance_command(conn, client_message)
+            if address in client_login_status and client_login_status[address]['logged_in']:
+             response = sell_command(conn, client_message)
+            else:
+                response = "403 Please login first\n"
+        elif client_message.startswith("BALANCE"): #DONT NEED USER_ID IN COMMAND!
+
+            if address in client_login_status and client_login_status[address]['logged_in']:
+                response = balance_command(conn, address, client_login_status)
+            else:
+                response = "403 Please login first\n"
 
         elif client_message.startswith("LOOKUP"):
             response = lookup_command(clientsocket, address, client_message, conn, client_login_status)
