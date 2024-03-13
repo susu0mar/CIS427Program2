@@ -1,4 +1,3 @@
-#TODO: Login, List, logout, who, Lookup, Deposit, Shutdown
 #This is file for all server operatons
 import socket
 #Use sqlite3 library to create simple db for stocks
@@ -79,7 +78,7 @@ with sqlite3.connect('stock_trading_system.db') as conn:
 # conn.commit()
 # print("Initial data added successfully")
 
- #TODO: maybe not require user_id in buy command   
+  
 #Souad
 def buy_command(conn, command):
     _, stock_symbol, stock_amount, price_per_stock, user_id= command.split()
@@ -134,7 +133,7 @@ def buy_command(conn, command):
     return f"200 OK\nBOUGHT: New balance: {new_stock_balance} {stock_symbol}. USD balance ${new_usd_balance}"
 
 
-#TODO: maybe not require user_id in sell command
+
 #Brooklyn
 def sell_command(conn, command):
     _, stock_symbol, stock_amount, price_per_stock, user_id = command.split()
@@ -249,11 +248,6 @@ def shutdown_command(clientsocket, serversocket, conn):
     global shutdown_event
     shutdown_event.set()
 
-    #close client socket
-    #clientsocket.close()
-
-    #close server socket
-    #serversocket.close()
 
     #close db connection
     conn.close()
@@ -288,7 +282,7 @@ def login_command(clientsocket, address, command, conn):
     cursor.execute("SELECT user_name, password, ID FROM users WHERE user_name = ? AND password = ?", (username, password))
     result = cursor.fetchone()
 
-    #maybe have lock for concurrency IDK**
+    
     if result:
         username,_,user_id = result
         client_login_status[address] = {'logged_in': True, 'user_name': username, 'user_id': user_id, 'IP': address[0]}
@@ -441,7 +435,7 @@ def handle_clients(clientsocket, address):
                 response = "403 Please login first\n"
         elif client_message.startswith("SELL"):
             if address in client_login_status and client_login_status[address]['logged_in']:
-             response = sell_command(conn, client_message)
+                response = sell_command(conn, client_message)
             else:
                 response = "403 Please login first\n"
         elif client_message.startswith("BALANCE"): #DONT NEED USER_ID IN COMMAND!

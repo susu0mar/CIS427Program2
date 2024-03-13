@@ -67,10 +67,6 @@ cmd_queue = queue.Queue() #create a queue for thread-safe communication
 threading.Thread(target=input_handler, args=(cmd_queue,), daemon=True).start()
 
 
-#welcome_message = cs.recv(4096).decode()
-
-#print(welcome_message)
-
 
 try:
     should_close = False
